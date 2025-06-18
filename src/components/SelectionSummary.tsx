@@ -1,17 +1,97 @@
-import React from 'react';
-import { SelectionState } from '../types';
+import React, { useState } from 'react';
+import { SelectionState, ExportSettings } from '../types';
 import { TestTube, Folder, FileText, Download } from 'lucide-react';
+import { ExportSettingsComponent } from './ExportSettings';
 
 interface SelectionSummaryProps {
   selection: SelectionState;
-  onExport: () => void;
+  onExport: (settings: ExportSettings) => void;
 }
 
 export const SelectionSummary: React.FC<SelectionSummaryProps> = ({ selection, onExport }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [exportSettings, setExportSettings] = useState<ExportSettings>({
+    printDesign: 'detailed',
+    includeUnexecutedCases: true,
+    fieldsToInclude: {
+      description: true,
+      preconditions: true,
+      steps: true,
+      expectedResult: true,
+      variables: true,
+      tags: true,
+      priority: true,
+      automationStatus: true,
+      lastExecuted: true,
+      outcome: true
+    },
+    testOrder: 'original',
+    groupBy: 'suite'
+  });
+
   const hasSelection = 
     selection.selectedTestPlans.length > 0 || 
     selection.selectedTestSuites.length > 0 || 
     selection.selectedTestCases.length > 0;
+
+  const handleExport = () => {
+    onExport(exportSettings);
+  };
+
+  const handleSettingsChange = (newSettings: ExportSettings) => {
+    setExportSettings(newSettings);
+    
+    // Auto-configure fields based on print design
+    if (newSettings.printDesign === 'detailed') {
+      setExportSettings(prev => ({
+        ...newSettings,
+        fieldsToInclude: {
+          description: true,
+          preconditions: true,
+          steps: true,
+          expectedResult: true,
+          variables: true,
+          tags: true,
+          priority: true,
+          automationStatus: true,
+          lastExecuted: true,
+          outcome: true
+        }
+      }));
+    } else if (newSettings.printDesign === 'summary') {
+      setExportSettings(prev => ({
+        ...newSettings,
+        fieldsToInclude: {
+          description: true,
+          preconditions: false,
+          steps: true,
+          expectedResult: true,
+          variables: false,
+          tags: false,
+          priority: true,
+          automationStatus: false,
+          lastExecuted: false,
+          outcome: true
+        }
+      }));
+    } else if (newSettings.printDesign === 'compact') {
+      setExportSettings(prev => ({
+        ...newSettings,
+        fieldsToInclude: {
+          description: false,
+          preconditions: false,
+          steps: true,
+          expectedResult: false,
+          variables: false,
+          tags: false,
+          priority: true,
+          automationStatus: false,
+          lastExecuted: false,
+          outcome: true
+        }
+      }));
+    }
+  };
 
   return (
     <div className="bg-white border rounded-lg">
@@ -46,8 +126,15 @@ export const SelectionSummary: React.FC<SelectionSummaryProps> = ({ selection, o
           </div>
         </div>
         
+        <ExportSettingsComponent
+          settings={exportSettings}
+          onSettingsChange={handleSettingsChange}
+          isOpen={showSettings}
+          onToggle={() => setShowSettings(!showSettings)}
+        />
+        
         <button
-          onClick={onExport}
+          onClick={handleExport}
           disabled={!hasSelection}
           className={`w-full flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors ${
             hasSelection
